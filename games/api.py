@@ -1,4 +1,8 @@
-from ninja import Router
+from ninja import Router, File, Form
+from ninja.files import UploadedFile
+from deepface import DeepFace
+import cv2
+import numpy as np
 from database.client import supabase
 from datetime import datetime, timedelta
 
@@ -23,6 +27,7 @@ def createGame(request):
         .insert({
             "game_id": game['id'],
             "user_id": user.id,
+            "name": user.email,
         })
         .execute()
     )
@@ -46,6 +51,7 @@ def joinGame(request, game_id: int):
         .insert({
             "game_id": game_id,
             "user_id": user.id,
+            "name": user.email,
         })
         .execute()
     )
@@ -84,3 +90,99 @@ def startGame(request, game_id: int):
     )
 
     return {"game": game.data}
+
+
+@router.get("/{game_id}/players")
+def listPlayer(request, game_id: int):
+    game = supabase.table("games").select("*").eq("id", game_id).maybe_single().execute()
+    if not game:
+        return {"error": "Game not found"}
+    
+    players = supabase.table("players").select("*").eq("game_id", game_id).execute()
+
+    return {"players": players.data}
+
+@router.post("/{game_id}/shoot")
+def listPlayer(request, game_id: int, image: UploadedFile = File(...)):
+    user = request.auth
+
+    game = supabase.table("games").select("*").eq("id", game_id).maybe_single().execute()
+    if not game:
+        return {"error": "Game not found"}
+    
+    action_player = supabase.table("players").select("*").eq("game_id", game_id).eq("user_id", user.id).maybe_single().execute()
+    if not action_player:
+        return {"error": "Player not in game"}
+
+    # Convert the uploaded file to a numpy array
+    file_bytes = np.frombuffer(image.read(), np.uint8)
+    img = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
+    
+    embedding_objects = DeepFace.represent(
+        img_path = img,
+        model_name = "Facenet",
+        detector_backend = "mtcnn"
+    )
+    
+    embedding = embedding_objects[0]["embedding"]
+
+    response = supabase.rpc("recognize_players_face", {
+        "query_game_id": game_id,
+        "query_embedding": embedding,
+        "threshold": 0.6,
+        "take": 1
+    }).maybe_single().execute()
+
+    live = 1
+    score = 1
+
+    player_face = response.data
+    if not player_face:
+        return {"error": "No player shooted"}
+    
+    target_player = supabase.table("players").select("*").eq("id", player_face['player_id']).maybe_single().execute()
+
+    # Reduce live
+    if target_player:
+        target_player = target_player.data
+
+        target_player = (
+            supabase.table("players")
+            .update({
+                "total_lives": target_player['total_lives'] - live
+            })
+            .eq("id", target_player['id'])
+            .execute()
+        )
+
+        target_player = target_player.data[0]
+
+    # Increase score
+    if action_player:
+        action_player = action_player.data
+        
+        action_player = (
+            supabase.table("players")
+            .update({
+                "total_scores": action_player['total_scores'] + score
+            })
+            .eq("id", action_player['id'])
+            .execute()
+        )
+
+        action_player = action_player.data[0]
+
+    # Insert score events
+    score_event = (
+        supabase.table("game_score_events")
+        .insert({
+            "game_id": game_id,
+            "action_player_id": action_player['id'],
+            "target_player_id": target_player['id'],
+            "lives_reduced": live,
+            "scores_awarded": score
+        })
+        .execute()
+    )
+
+    return {"score_event": score_event.data[0]}

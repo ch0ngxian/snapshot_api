@@ -55,6 +55,6 @@ def recognizeAvatar(request, image: UploadedFile = File(...)):
         "query_embedding": embedding,
         "threshold": 0.6,
         "take": 1
-    }).execute()
+    }).maybe_single().execute()
 
     return {"response": response}
