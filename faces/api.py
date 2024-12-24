@@ -8,7 +8,9 @@ from database.client import supabase
 router = Router()
 
 @router.post("")
-def createFaces(request, name: Form[str], image: UploadedFile = File(...)):
+def createFaces(request, image: UploadedFile = File(...)):
+    user = request.auth
+
     # Convert the uploaded file to a numpy array
     file_bytes = np.frombuffer(image.read(), np.uint8)
     img = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
@@ -22,9 +24,9 @@ def createFaces(request, name: Form[str], image: UploadedFile = File(...)):
     embedding = embedding_objects[0]["embedding"]
     
     response = (
-        supabase.table("avatar_images")
+        supabase.table("faces")
         .insert({
-            "name": name,
+            "user_id": user.id,
             "embedding": embedding
         })
         .execute()
@@ -34,6 +36,8 @@ def createFaces(request, name: Form[str], image: UploadedFile = File(...)):
 
 @router.post("/recognize")
 def recognizeAvatar(request, image: UploadedFile = File(...)):
+    user = request.auth
+
     # Convert the uploaded file to a numpy array
     file_bytes = np.frombuffer(image.read(), np.uint8)
     img = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
@@ -46,7 +50,8 @@ def recognizeAvatar(request, image: UploadedFile = File(...)):
     
     embedding = embedding_objects[0]["embedding"]
 
-    response = supabase.rpc("recognize_face", {
+    response = supabase.rpc("recognize_user_face", {
+        "query_user_id": user.id,
         "query_embedding": embedding,
         "threshold": 0.6,
         "take": 1
