@@ -47,9 +47,9 @@ def createGame(request):
 @router.post("/join")
 def joinGame(request, data: JoinGameSchema):
     user = request.auth
-    game_code = data.game_code
+    code = data.code
 
-    game = supabase.table("games").select("id").eq("code", game_code).maybe_single().execute()
+    game = supabase.table("games").select("id").eq("code", code).maybe_single().execute()
     if not game:
         return {"error": "Game not found"}
 
