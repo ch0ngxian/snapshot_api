@@ -1,2 +1,4 @@
 from ninja import Schema
-from datetime import datetime
+
+class JoinGameSchema(Schema):
+    game_code: int

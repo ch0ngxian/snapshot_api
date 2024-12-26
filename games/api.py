@@ -1,3 +1,4 @@
+import random
 from ninja import Router, File, Form
 from ninja.files import UploadedFile
 from deepface import DeepFace
@@ -5,6 +6,7 @@ import cv2
 import numpy as np
 from database.client import supabase
 from datetime import datetime, timedelta
+from .schema import JoinGameSchema
 
 router = Router()
 
@@ -12,15 +14,23 @@ router = Router()
 def createGame(request):
     user = request.auth
 
+    while True:
+        code = random.randrange(111111, 999999, 6)
+        game = supabase.table("games").select("id").eq("code", code).maybe_single().execute()
+
+        if not game:
+            break
+
     game = (
         supabase.table("games")
         .insert({
-            "owner_user_id": user.id
+            "owner_user_id": user.id,
+            "code": code
         })
         .execute()
     )
 
-    game = game.data
+    game = game.data[0]
 
     player = (
         supabase.table("players")
@@ -34,13 +44,16 @@ def createGame(request):
 
     return {"game": game}
 
-@router.post("/{game_id}/join")
-def joinGame(request, game_id: int):
+@router.post("/join")
+def joinGame(request, data: JoinGameSchema):
     user = request.auth
+    game_code = data.game_code
 
-    game = supabase.table("games").select("id").eq("id", game_id).maybe_single().execute()
+    game = supabase.table("games").select("id").eq("code", game_code).maybe_single().execute()
     if not game:
         return {"error": "Game not found"}
+
+    game_id = game.data['id']
 
     player = supabase.table("players").select("id").eq("game_id", game_id).eq("user_id", user.id).maybe_single().execute()
     if player:
