@@ -53,11 +53,13 @@ def joinGame(request, data: JoinGameSchema):
     if not game:
         return {"error": "Game not found"}
 
-    game_id = game.data['id']
+    game = game.data
+    game_id = game['id']
 
     player = supabase.table("players").select("id").eq("game_id", game_id).eq("user_id", user.id).maybe_single().execute()
     if player:
-        return {"error": "Player already joined"}
+        # Player already joined
+        return {"game": game}
         
     player = (
         supabase.table("players")
@@ -69,7 +71,7 @@ def joinGame(request, data: JoinGameSchema):
         .execute()
     )
 
-    return {"player": player.data}
+    return {"game": game}
 
 @router.post("/{game_id}/start")
 def startGame(request, game_id: int):
