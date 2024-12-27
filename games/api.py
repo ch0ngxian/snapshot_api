@@ -97,6 +97,12 @@ def startGame(request, game_id: int):
     }).execute()
     
     staged_player_faces = response.data
+    
+    # Check for empty embeddings
+    for face in staged_player_faces:
+        if not face.get('embedding'):
+            return {"error": "Cannot start game, some players not setup faces yet"}
+
     supabase.table("player_faces").insert(staged_player_faces).execute()
 
     starts_at = datetime.now()
