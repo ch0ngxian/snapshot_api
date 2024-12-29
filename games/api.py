@@ -82,7 +82,7 @@ def retrieveGame(request, game_id: int):
     return {"game": game.data}
 
 @router.get("/{game_id}/current_player")
-def retrieveGame(request, game_id: int):
+def retrieveCurrentPlayer(request, game_id: int):
     user = request.auth
 
     game = supabase.table("games").select("*").eq("id", game_id).maybe_single().execute()
@@ -92,7 +92,6 @@ def retrieveGame(request, game_id: int):
     player = supabase.table("players").select("*").eq("game_id", game_id).eq("user_id", user.id).maybe_single().execute()
 
     return {"player": player.data}
-
 
 @router.post("/{game_id}/start")
 def startGame(request, game_id: int):
@@ -145,7 +144,7 @@ def listPlayer(request, game_id: int):
     return {"players": players.data}
 
 @router.post("/{game_id}/shoot")
-def listPlayer(request, game_id: int, image: UploadedFile = File(...)):
+def shootPlayer(request, game_id: int, image: UploadedFile = File(...)):
     user = request.auth
 
     game = supabase.table("games").select("*").eq("id", game_id).maybe_single().execute()
@@ -176,7 +175,7 @@ def listPlayer(request, game_id: int, image: UploadedFile = File(...)):
     }).maybe_single().execute()
 
     live = 1
-    score = 1
+    score = 100
 
     player_face = response.data
     if not player_face:
