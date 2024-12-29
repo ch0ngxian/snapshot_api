@@ -7,6 +7,23 @@ from database.client import supabase
 
 router = Router()
 
+@router.get("")
+def listFaces(request):
+    user = request.auth
+
+    faces = supabase.table("faces").select("*").eq("user_id", user.id).execute()
+
+    return {"faces": faces.data}
+
+
+@router.get("/count")
+def countFaces(request):
+    user = request.auth
+
+    face_count = supabase.table("faces").select("count", count="exact").eq("user_id", user.id).execute()
+
+    return {"count": face_count.count}
+
 @router.post("")
 def createFaces(request, image: UploadedFile = File(...)):
     user = request.auth
@@ -32,7 +49,9 @@ def createFaces(request, image: UploadedFile = File(...)):
         .execute()
     )
 
-    return {"response": response}
+    face = response.data[0]
+
+    return {"face": face}
 
 @router.post("/recognize")
 def recognizeAvatar(request, image: UploadedFile = File(...)):
@@ -55,6 +74,9 @@ def recognizeAvatar(request, image: UploadedFile = File(...)):
         "query_embedding": embedding,
         "threshold": 0.6,
         "take": 1
-    }).maybe_single().execute()
+    }).execute()
 
-    return {"response": response}
+    if response.data:
+        return {"status": True}
+    else:
+        return {"error": "No matching face found"}
