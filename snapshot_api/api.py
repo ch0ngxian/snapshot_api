@@ -6,7 +6,8 @@ class Auth(APIKeyHeader):
     param_name = "SS-Access-Token"
 
     def authenticate(self, request, key):
-        response = supabase.auth.get_user(key)
+        refresh_token = request.headers.get("SS-Refresh-Token")
+        response = supabase.auth.set_session(key, refresh_token)
         if response and response.user:
             return response.user
         
