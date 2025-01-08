@@ -138,7 +138,7 @@ def startGame(request, game_id: int):
     return {"game": game.data}
 
 @router.get("/{game_id}/players")
-def listPlayer(request, game_id: int):
+def listPlayers(request, game_id: int):
     game = supabase.table("games").select("*").eq("id", game_id).maybe_single().execute()
     if not game:
         return {"error": "Game not found"}
@@ -146,6 +146,17 @@ def listPlayer(request, game_id: int):
     players = supabase.table("players").select("*").eq("game_id", game_id).execute()
 
     return {"players": players.data}
+
+@router.get("/{game_id}/leaderboard")
+def listLeaderboard(request, game_id: int):
+    game = supabase.table("games").select("*").eq("id", game_id).maybe_single().execute()
+    if not game:
+        return {"error": "Game not found"}
+    
+    players = supabase.table("players").select("*").eq("game_id", game_id).execute()
+
+    return {"players": players.data}
+
 
 @router.post("/{game_id}/shoot")
 def shootPlayer(request, game_id: int, image: UploadedFile = File(...)):
