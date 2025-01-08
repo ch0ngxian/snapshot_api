@@ -32,12 +32,14 @@ def createGame(request):
 
     game = game.data[0]
 
+    player_name = user.user_metadata.get('nickname') or user.user_metadata.get('full_name') or user.email
+
     player = (
         supabase.table("players")
         .insert({
             "game_id": game['id'],
             "user_id": user.id,
-            "name": user.email,
+            "name": player_name,
         })
         .execute()
     )
@@ -61,12 +63,14 @@ def joinGame(request, data: JoinGameSchema):
         # Player already joined
         return {"game": game}
         
+    player_name = user.user_metadata.get('nickname') or user.user_metadata.get('full_name') or user.email
+
     player = (
         supabase.table("players")
         .insert({
             "game_id": game_id,
             "user_id": user.id,
-            "name": user.email,
+            "name": player_name,
         })
         .execute()
     )
@@ -159,11 +163,14 @@ def shootPlayer(request, game_id: int, image: UploadedFile = File(...)):
     file_bytes = np.frombuffer(image.read(), np.uint8)
     img = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
     
-    embedding_objects = DeepFace.represent(
-        img_path = img,
-        model_name = "Facenet",
-        detector_backend = "mtcnn"
-    )
+    try:
+        embedding_objects = DeepFace.represent(
+            img_path = img,
+            model_name = "Facenet",
+            detector_backend = "mtcnn"
+        )
+    except Exception as e:
+        return {"message": "No face detected", "error": str(e)}
     
     embedding = embedding_objects[0]["embedding"]
 
