@@ -29,8 +29,9 @@ def countFaces(request):
 def createFace(request, image: UploadedFile = File(...)):
     user = request.auth
 
+    image_content = image.read()
     # Convert the uploaded file to a numpy array
-    file_bytes = np.frombuffer(image.read(), np.uint8)
+    file_bytes = np.frombuffer(image_content, np.uint8)
     img = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
     
     embedding_objects = DeepFace.represent(
@@ -50,6 +51,22 @@ def createFace(request, image: UploadedFile = File(...)):
         .execute()
     )
 
+    storage_response = supabase.storage.from_("snapshot").upload(
+        path=f"faces/{image.name}",
+        file=image_content,
+        file_options={"content-type": image.content_type, "cache-control": "3600", "upsert": "true"},
+    )
+
+    avatar_url = supabase.storage.from_("snapshot").get_public_url(
+        storage_response.path
+    )
+
+    update_avatar_response = supabase.auth.update_user({
+        "data": {"avatar_url": avatar_url}
+    })
+
+    print(update_avatar_response)
+    
     face = response.data[0]
 
     return {"face": face}
