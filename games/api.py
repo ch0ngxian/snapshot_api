@@ -179,15 +179,15 @@ def shootPlayer(request, game_id: int, image: UploadedFile = File(...)):
         "query_embedding": embedding,
         "threshold": 0.6,
         "take": 1
-    }).maybe_single().execute()
+    }).execute()
 
     live = 1
     score = 100
-
-    player_face = response.data
-    if not player_face:
+    
+    if not response.data:
         return {"error": "No player shooted"}
     
+    player_face = response.data[0]
     target_player = supabase.table("players").select("*").eq("id", player_face['player_id']).maybe_single().execute()
 
     # Reduce live
