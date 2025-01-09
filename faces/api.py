@@ -61,11 +61,9 @@ def createFace(request, image: UploadedFile = File(...)):
         storage_response.path
     )
 
-    update_avatar_response = supabase.auth.update_user({
+    supabase.auth.update_user({
         "data": {"avatar_url": avatar_url}
     })
-
-    print(update_avatar_response)
     
     face = response.data[0]
 
